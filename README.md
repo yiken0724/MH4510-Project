@@ -128,7 +128,7 @@ Download `DataCoSupplyChainDataset.csv` from [Kaggle](https://www.kaggle.com/dat
 
 ### 4. (Optional) Configure geocoding credentials
 
-If re-running the geocoding step, you will need a Google Cloud API key with the Geocoding API enabled. The pre-geocoded coordinate file is included in `data/` so this step can be skipped.
+If re-running the geocoding step, you will need a Google Cloud API key with the Geocoding API enabled. The pre-geocoded coordinate file is included in `dataset/` so this step can be skipped.
 
 ---
 
