@@ -1,0 +1,1932 @@
+---
+title: |
+  \begin{center}
+  \includegraphics[width=0.65\textwidth]{images/logo.png}
+  \end{center}
+  
+  \vspace{1cm}
+  \LARGE \textbf{MH4510 Statistical Learning and Data Mining}
+  
+  \vspace{0.5cm}
+  \Large \textbf{Identifying customer segments through Unsupervised Learning}
+  
+  \vspace{1.5cm}
+author: |
+  | **Fantastic Four**
+  | Choo Yi Ken U2240710B
+  | Tong Hao Kit U2240130E
+  | Callista Limarta U2240542F
+  | Jasmine Teng Shi Min U2240121J
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  bookdown::pdf_document2: 
+    toc: true          
+    toc_depth: 3  
+  bookdown::html_document2: default
+bibliography: references.bib
+link-citations: true
+csl: advances-in-computational-mathematics.csl
+header-includes: 
+  - \usepackage{mathpazo}
+  - \DeclareMathOperator{\softmax}{softmax}
+  - \newcommand{\RR}{\mathbb{R}}
+  - \usepackage{float}
+  - \usepackage{longtable,booktabs,array}
+  - \setlength\LTleft{0pt}
+  - \setlength\LTright{0pt}
+  - \setlength\LTpre{0pt}
+  - \setlength\LTpost{0pt}
+  - \usepackage[T1]{fontenc}
+  - \usepackage{lmodern}
+  - \renewcommand{\rmdefault}{lmr}
+  - \renewcommand{\ttdefault}{lmtt}
+  - \usepackage[section]{placeins}
+  - \usepackage{tocloft}
+  - \setlength{\cftbeforesecskip}{2pt}
+  - \setlength{\cftbeforesubsecskip}{1pt}
+  - \setlength{\cftbeforesubsubsecskip}{0pt}
+
+abstract: |
+   \noindent Supply chain networks generate large volumes of transactional data, yet extracting actionable intelligence remains challenging without predefined business rules [@TIWARI2018319]. This contributes to operational inefficiencies, inconsistent delivery performance and poor allocation of logistics resources. To address this real-world challenge, this project applies unsupervised learning to uncover latent behavioural patterns in a global supply-chain dataset containing 180,519 transactions. Three complementary clustering methods – K-means, DBSCAN and Gaussian Mixture Models (GMM) are used to segment customers, detect anomalies and capture overlapping behavioural structures that influence cost and performance. Principal Component Analysis (PCA) is applied to reduce dimensionality while preserving 86.5% of variance, ensuring stable and interpretable clustering outcomes. K-Means identifies six distinct behavioural segments with clear differences in profitability and logistics characteristics (Silhouette = 0.356). DBSCAN revealed rare outliers indicating potential operational errors (Silhouette = 0.541), while GMM captured mixed behavioural tendencies relevant for nuanced customer management (Silhouette = 0.146). A multi-criteria evaluation confirms K-Means as the most balanced and interpretable method. Overall, the results demonstrate how raw operational data can be transformed into strategic insights using unsupervised learning, supporting supply-chain decisions, enabling targeted service differentiation, delivery optimization and risk mitigation.
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r r global_options, include=FALSE, message=FALSE}
+# the following command prevents all the R codes from being included
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE,
+                      out.width = "60%", out.height = "30%",
+                      fig.align='center', fig.width=8, fig.height=5 )
+
+# data manipulation
+library(tidyverse) # for manipulation with data
+
+# display
+library(knitr)
+library(kableExtra)
+
+# data cleaning, feature selection
+library(readr)
+library(lubridate)
+library(janitor)
+library(corrplot)
+library(car)
+library(caret)
+
+# kmeans
+library(cluster)
+library(factoextra)
+library(ggplot2)
+library(gridExtra)
+
+# dbscan
+library(dbscan)
+
+# gmm
+library(mclust)
+
+# cluster evaluation
+library(clusterSim)
+library(clValid)
+library(fpc)
+library(plotly)
+
+set.seed(42)
+```
+
+\newpage
+
+# Introduction
+
+Modern supply-chain operations generate large volumes of transactional
+data, yet organizations lack systematic understanding of customer
+heterogeneity in purchasing behaviour, order frequency, profit
+contribution and delivery reliability. Without data-driven segmentation,
+firms operate with uniform service levels and reactive decision-making,
+leading to inefficient resource allocation, inconsistent performance and
+limited ability to prioritize high-value customers [@TIWARI2018319].
+
+Unsupervised learning methods — K-Means, DBSCAN and Gaussian Mixture
+Models, enable automatic segmentation based on multi-dimensional
+behavioural patterns without predefined business rules. This project
+applies these techniques to 180,519 global supply-chain transactions to
+reveal behavioural groups and anomaly profiles that support strategic
+logistics planning, service differentiation and risk mitigation.
+
+## Problem Statement
+
+The machine-learning problem addressed is to automatically segment
+customers based on behavioural metrics (order frequency, spending
+levels, profit ratios, delivery performance) using unsupervised
+clustering. Traditional demographic attributes and manual segmentation
+lack discriminatory power and scalability. By uncovering natural
+groupings in transactional data, this analysis aims to generate insights
+supporting service differentiation, delivery optimization and anomaly
+detection.
+
+## Literature Review
+
+Traditional supply-chain segmentation relies on expert judgments or
+rule-based thresholds, which overlook complex behavioural relationships
+[@Biswas_2016]. Big data analytics enables algorithmic approaches that
+reveal interdependencies conventional methods cannot detect
+[@TIWARI2018319].
+
+K-Means remains widely applied due to scalability and interpretability
+[@JAIN2010651],[@lloyd1982kmeans], but assumes spherical clusters and is
+sensitive to initialization. DBSCAN discovers arbitrary-shaped clusters
+and identifies noise points representing anomalies or errors
+[@ester1996density]. GMM extends flexibility through probabilistic soft
+assignments, enabling partial membership across behavioural profiles
+[@mclachlan2019finite].
+
+Prior studies demonstrate clustering value in supply-chain contexts
+[@GOVINDAN2020101967],[@choi2018bda], but focus on single approach. This
+study systematically compares centroid-based, density-based and
+model-based methods to evaluate their complementary strengths in
+profiling customer behaviour, profitability and delivery performance.
+
+## Objectives
+
+This project aims to derive actionable customer segments that support
+supply-chain decision-making. Specifically:
+
+1.  Identify natural customer segments based on behavioural metrics
+    without predefined rules.
+
+2.  Compare K-Means, DBSCAN and GMM using weighted evaluation to
+    determine the most actionable segmentation.
+
+3.  Detect anomalous profiles indicating fraud, errors or operational
+    inefficiencies.
+
+4.  Translate clustering outputs into business insights supporting
+    logistics prioritization, service differentiation and risk
+    mitigation.
+
+# Data and Methodology
+
+## Data Sources
+
+### Primary Dataset: DataCo SMART Supply Chain
+
+**Dataset Overview:** The DataCo SMART Supply Chain dataset from Kaggle
+serves as the primary dataset for this project
+(<https://www.kaggle.com/datasets/shashwatwork/dataco-smart-supply-chain-for-big-data-analysis/data>).
+
+The dimensions of the primary dataset is as follows:
+
+```{r echo=FALSE}
+df_raw <- read.csv("dataset/DataCoSupplyChainDataset.csv") 
+dim(df_raw)
+
+```
+
+**Key Characteristics:** The raw dataset from DataCoSupplyChain is a
+transaction-level dataset, where each row represents an entry of
+transaction. Table 1 summarizes the dataset and provides a brief
+understanding of its size and distribution.
+
+```{r summary-of-data, echo=FALSE}
+# Clean order data and shipping date
+# Change the order city and country to UTF-8
+
+df_raw <- df_raw %>% mutate(
+    # Parse order date
+    order_date_clean = parse_date_time(
+      order.date..DateOrders.,
+      orders = c("mdy HM", "mdy_HM"),
+      truncated = 3
+    ),
+    # Parse shipping date
+    shipping_date_clean = parse_date_time(
+      shipping.date..DateOrders.,  
+      orders = c("mdy HM", "mdy_HM"),
+      truncated = 3
+    )
+  ) %>%
+  mutate(
+    `Order.City` = iconv(`Order.City`, to = "UTF-8", sub = ""),
+    `Order.Country` = iconv(`Order.Country`, to = "UTF-8", sub = ""),
+    location = paste(`Order.City`, `Order.Country`, sep = ", ")
+  ) %>% dplyr::select(-shipping.date..DateOrders., -order.date..DateOrders.)
+
+summary_stats <- data.frame(
+  Metric = c("Total Orders", "Unique Customers", "Countries Served", 
+             "Product Categories", "Order Date Range", "Shipping Date Range"),
+  Value = c(
+    format(nrow(df_raw), big.mark = ","),
+    format(length(unique(df_raw$Customer.Id)), big.mark = ","),
+    length(unique(df_raw$Order.Country)),
+    length(unique(df_raw$Department.Name)),
+    paste(
+      format(min(df_raw$order_date_clean, na.rm = TRUE), "%B %Y"), 
+      "to", 
+      format(max(df_raw$order_date_clean, na.rm = TRUE), "%B %Y")
+    ),
+    paste(
+      format(min(df_raw$shipping_date_clean, na.rm = TRUE), "%B %Y"), 
+      "to", 
+      format(max(df_raw$shipping_date_clean, na.rm = TRUE), "%B %Y")
+    )
+  )
+)
+kable(summary_stats, 
+      booktabs = TRUE,
+      caption = "Summary of DataCoSupplyChain Dataset") %>%  
+  kable_styling(latex_options = "HOLD_position")
+```
+
+The detailed descriptions of each attribute from the primary dataset is
+shown in Appendix.
+
+### Supplementary Dataset: Google Cloud Geocoding API
+
+Since geographic coordinates (latitude/longitude) are necessary for
+distance-based analysis, we utilized Google Cloud Geocoding API to
+perform geocoding on `Order City`, `Order Country` due to the city being
+the finest geographical granularity about the order location.
+
+Each unique city-country pair was concatenated into the standardized
+format "`Order City`, `Order Country`" (e.g., "Paris, France", "Tokyo,
+Japan") and submitted to the API to retrieve the corresponding latitude
+and longitude. The API returns the geographic center (centroid) of each
+unique city-country pair (total: 3665 pairs), providing consistent
+city-level coordinate precision across all observations.
+
+Then, the geocoded dataset is merged to the primary dataset through a
+composite key consisting of `Order City` and `Order Country` through a
+one-to-many relationship.
+
+```{r, eval=FALSE}
+# geocoding_script.R contains the R code that connects to Google Cloud Backend API to retrieve the latitude and longtitude of City, Country
+# source("geocoding_script.R", local = TRUE) # eval is set to FALSE to prevent it from running again since API calls charges
+```
+
+```{r include=FALSE}
+# we will read the output file instead since we have already run it once
+df_geocode <- read.csv("dataset/destinations_geocoded.csv") 
+df_combined <- left_join(df_raw, df_geocode, by = c("location" = "location"))
+dim(df_combined)
+```
+
+## Data Cleaning
+
+We performed the following data cleaning steps on the raw
+transactional-level data:
+
+-   Removed columns that contains more than 80% NA values (offer no
+    information for modelling).
+
+-   Removed columns that contained only unique values (they have zero
+    variance and cannot help to differentiate between customers).
+
+-   Removed records that are duplicated (may inflate sample size and
+    skew model results).
+
+-   Removed records not in the correct range such as negative sales or
+    negative delivery days (erroneous values that corrupt statistical
+    analysis). Specific details are shown in Table 2.
+
+```{r include=FALSE}
+# Remove columns 
+na_threshold <- 0.80
+na_proportions <- colMeans(is.na(df_combined))
+cols_to_remove_na <- names(na_proportions[na_proportions > na_threshold])
+
+df_cleaned <- df_combined %>%
+  dplyr::select(-all_of(cols_to_remove_na)) %>%
+  dplyr::select(where(~n_distinct(., na.rm = TRUE) > 1))
+cat("Original number of columns:", ncol(df_combined), "columns. After removing columns:", ncol(df_cleaned), "columns\n\n")
+
+# Remove duplicate rows
+n_duplicates <- sum(duplicated(df_cleaned))
+cat("Duplicate rows:", format(n_duplicates, big.mark = ","), "\n")
+df_cleaned <- df_cleaned %>% distinct()
+
+
+# Perform type coercion and filter variables
+df_cleaned <- df_cleaned %>%
+  dplyr::select(-Order.City.y, -Order.Country.y, -location) %>% 
+  rename("Order.City"="Order.City.x", "Order.Country"="Order.Country.x", "source_lat"="Latitude", "source_long"="Longitude") %>%
+  mutate(
+    across(c(Days.for.shipping..real., Days.for.shipment..scheduled., Benefit.per.order, 
+             Sales.per.customer, Order.Item.Discount, Order.Item.Discount.Rate, 
+             Order.Item.Product.Price, Order.Item.Profit.Ratio, Order.Item.Quantity, Sales, 
+             Order.Item.Total, Order.Profit.Per.Order, Product.Price, source_lat, source_long, 
+             dest_lat, dest_long, Late_delivery_risk), 
+           as.numeric),
+    
+    across(c(Customer.Id, Order.Id, Order.Customer.Id, Customer.Zipcode, Category.Id, 
+             Department.Id, Order.Item.Id, Product.Card.Id, Product.Category.Id, 
+             Order.Item.Cardprod.Id), 
+           as.character),
+    
+    across(c(Type, Delivery.Status, Customer.Segment, Department.Name, Market, Shipping.Mode, 
+             Category.Name, Order.Status, Order.Region, Customer.City, Customer.Country, 
+             Customer.State, Order.City, Order.Country, Order.State), 
+           as.factor)
+  )
+
+cat("Data types converted successfully\n")
+
+# Number of rows before removing invalid values
+n_before <- nrow(df_cleaned) 
+
+df_cleaned <- df_cleaned %>%
+  filter(
+    # Quantity and prices must be positive
+    Order.Item.Quantity > 0,
+    Order.Item.Total >= 0,
+    Sales >= 0,
+    Product.Price >= 0,
+    
+    # Days can't be negative
+    Days.for.shipping..real. >= 0,
+    Days.for.shipment..scheduled. >= 0,
+    
+    # Discount rate should be between 0 and 100
+    Order.Item.Discount.Rate >= 0,
+    Order.Item.Discount.Rate <= 100,
+    
+    # Coordinates should be valid ranges
+    source_lat >= -90, source_lat <= 90,
+    source_long >= -180, source_long <= 180,
+    dest_lat >= -90, dest_lat <= 90,
+    dest_long >= -180, dest_long <= 180
+  )
+
+cat("Invalid records removed:", n_before - nrow(df_cleaned), "\n")
+
+validation_rules <- data.frame(
+  Category = c("Quantity & Prices", "", "", "",
+               "Shipping Duration", "",
+               "Discount Rate", "",
+               "Geographic Coordinates", "", "", ""),
+  Variable = c("Order.Item.Quantity", "Order.Item.Total", "Sales", "Product.Price",
+               "Days.for.shipping..real.", "Days.for.shipment..scheduled.",
+               "Order.Item.Discount.Rate", "Order.Item.Discount.Rate",
+               "source_lat / dest_lat", "source_lat / dest_lat",
+               "source_long / dest_long", "source_long / dest_long"),
+  Rule = c("> 0", ">= 0", ">= 0", ">= 0",
+           ">= 0", ">= 0",
+           ">= 0", "<= 100",
+           ">= -90", "<= 90",
+           ">= -180", "<= 180"),
+  Rationale = c("Quantity must be positive",
+                "Total cannot be negative",
+                "Sales cannot be negative",
+                "Price cannot be negative",
+                "Days cannot be negative",
+                "Days cannot be negative",
+                "Discount rate minimum",
+                "Discount rate maximum",
+                "Valid latitude minimum",
+                "Valid latitude maximum",
+                "Valid longitude minimum",
+                "Valid longitude maximum")
+)
+```
+
+```{r include=TRUE}
+kable(validation_rules, booktabs = TRUE,
+      col.names = c("Category", "Variable", "Rule", "Rationale"),
+      caption = "Elimination Rules for Erroneous Datapoints") %>%
+  kable_styling(latex_options = "HOLD_position", font_size = 9)
+```
+
+## Feature Engineering
+
+Given the dataset's existing complexity with 50 variables, we performed
+minimal feature engineering by adding one critical geographic feature:
+`delivery_distance_km`, calculated using the Haversine formula to
+determine the great-circle distance $d$ between two points on Earth
+given their longitude and latitude:
+
+$$d = 2r \arcsin\left(\sqrt{\sin^2\left(\frac{\phi_2 - \phi_1}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\lambda_2 - \lambda_1}{2}\right)}\right)$$
+
+```{r include=FALSE}
+# definition of haversine distance function
+haversine_distance <- function(lon1, lat1, lon2, lat2) {
+  # Convert degrees to radians
+  lon1_rad <- lon1 * pi / 180
+  lat1_rad <- lat1 * pi / 180
+  lon2_rad <- lon2 * pi / 180
+  lat2_rad <- lat2 * pi / 180
+  
+  # Differences
+  dlon <- lon2_rad - lon1_rad
+  dlat <- lat2_rad - lat1_rad
+  
+  a <- sin(dlat/2)^2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon/2)^2
+  c <- 2 * atan2(sqrt(a), sqrt(1-a))
+  
+  r <- 6371 # Earth's radius in kilometers
+  
+  distance <- r * c
+  return(distance)
+}
+
+df_engineered <- df_cleaned %>%
+  mutate(
+    delivery_distance_km = haversine_distance(
+      source_long, source_lat, dest_long, dest_lat
+    )
+)
+
+cat("Added 1 new features: delivery_distance_km\n")
+cat("Total features:", ncol(df_engineered), "\n")
+```
+
+To transition from high-granularity transaction data to low-granularity
+customer segments, all relevant numerical transaction variables were
+aggregated by `Customer.Id`, resulting in a single behavioural profile
+for each customer. This process used sum, mean and count functions to
+create features that reflect key aspects of customer interactions with
+the supply chain. Numeric variables such as `source_lat`, `source_long`,
+`dest_lat` and `dest_long` were excluded as aggregated geographic
+coordinates do not provide meaningful insights across multiple
+locations. Table 3 summarizes the customer-level feature engineering.
+
+```{r include=FALSE}
+numeric_features_cust <- df_engineered %>%
+  dplyr::select(where(is.numeric), Customer.Id)
+
+customer_features <- numeric_features_cust %>%
+  group_by(Customer.Id) %>% 
+  summarise(
+    # ===== ORDER BEHAVIOR =====
+    n_orders = n(),
+  
+    # ===== FINANCIAL =====
+    total_sales = sum(Sales),
+    avg_sales_per_cust = mean(Sales.per.customer),
+    avg_order_value = mean(Order.Item.Total),
+    
+    # ===== PROFIT =====
+    avg_profit_per_order = mean(Order.Profit.Per.Order),
+    avg_profit_ratio = mean(Order.Item.Profit.Ratio),
+    avg_benefit_per_order = mean(Benefit.per.order),
+    
+    # ===== PRICING =====
+    avg_order_item_product_price = mean(Order.Item.Product.Price),
+    avg_product_price = mean(Product.Price),
+    
+    # ===== DISCOUNT BEHAVIOR =====
+    tot_discount = sum(Order.Item.Discount),
+    avg_discount_rate = mean(Order.Item.Discount.Rate),
+    
+    # ===== QUANTITY =====
+    avg_items_per_order = mean(Order.Item.Quantity),
+    
+    # ===== DELIVERY PERFORMANCE =====
+    avg_days_for_shipping = mean(Days.for.shipping..real.),
+    avg_days_scheduled = mean(Days.for.shipment..scheduled.),
+    avg_late_delivery = mean(Late_delivery_risk),
+    
+    # ===== GEOGRAPHIC =====
+    avg_delivery_distance = mean(delivery_distance_km),
+    
+    .groups = "drop"
+  ) 
+
+customer_features_no_id = customer_features %>% dplyr::select(-Customer.Id)
+```
+
+```{r, include=TRUE}
+feature_engineering_summary <- data.frame(
+  `Feature Category` = c(
+    "Order Behaviour",
+    "Financial Contribution",
+    "Profitability",
+    "Discount/Pricing",
+    "Delivery Performance",
+    "Logistics Complexity"
+  ),
+  `Aggregation Function` = c(
+    "Count, Mean",
+    "Sum, Mean",
+    "Mean",
+    "Sum, Mean",
+    "Mean",
+    "Mean"
+  ),
+  `Example` = c(
+    "Number of orders, average items per order",
+    "Total sales, average order value",
+    "Average profit, profit ratios",
+    "Total discount, average discount rate",
+    "Shipping days, late-delivery rate",
+    "Average delivery distance"
+  ),
+  `Rationale` = c(
+    "Measures engagement frequency and volume.",
+    "Measures total spending and typical transaction size.",
+    "Measures the average value returned per transaction.",
+    "Captures sensitivity to pricing.",
+    "Measures the typical fulfillment time and risk.",
+    "Measures the logistical challenge of servicing the customer."
+  ),
+  check.names = FALSE
+)
+
+kable(feature_engineering_summary,
+      booktabs = TRUE,
+      caption = "Summary of Customer-Level Feature Engineering") %>%
+  kable_styling(latex_options = c("HOLD_position", "scale_down"), 
+                font_size = 8.5) %>%
+  column_spec(1, bold = TRUE, width = "3cm") %>%
+  column_spec(2, width = "2.5cm") %>%
+  column_spec(3, width = "4.5cm") %>%
+  column_spec(4, width = "5cm")
+```
+
+This aggregation reduced the dataset from 180,519 transactions to 20,652
+unique customers, with each customer represented by 16 behavioural
+metrics spanning the six categories above. These features form the input
+for subsequent dimensionality reduction and clustering analysis.
+
+## Exploratory Data Analysis
+
+To obtain an initial overview of the dataset, several engineered
+features (e.g., `n_orders`, `total_sales`, `avg_profit_rato`) were
+examined and summary statistics including the mean, median, standard
+deviation, min value and max value were computed. The results are shown
+in Table 4.
+
+```{r include=TRUE}
+eda_summary <- customer_features_no_id %>%
+  select(n_orders, total_sales, avg_profit_ratio, 
+        avg_days_for_shipping, avg_delivery_distance, avg_discount_rate) %>%
+  summarise(
+    across(everything(), 
+           list(
+             Mean = ~round(mean(., na.rm = TRUE), 1),
+             Median = ~round(median(., na.rm = TRUE), 1),
+             SD = ~round(sd(., na.rm = TRUE), 1),
+             Min = ~round(min(., na.rm = TRUE), 1),
+             Max = ~round(max(., na.rm = TRUE), 1)
+           ), .names = "{.col}_{.fn}")
+  ) %>%
+  pivot_longer(everything(), 
+               names_to = c("Feature", ".value"), 
+               names_pattern = "(.+)_(.+)")
+
+kable(eda_summary,
+      booktabs = TRUE,
+      col.names = c("Feature", "Mean", "Median", "SD", "Min", "Max"),
+      caption = "Summary Statistics of Selected Features") %>%
+  kable_styling(latex_options = "HOLD_position", font_size = 9)
+```
+
+We further examined the distributions of the selected customer-level
+features to identify possible skewness, outliers and scale differences.
+Figure 1 shows the histograms for the 6 selected variables. From the
+distribution plots, `n_orders` and `total_sales` exhibit strong
+right-skewness, with majority of customers concentrated at lower values.
+In contrast, `avg_profit_ratio` shows left-skewness, with most
+observations close to zero, indicating that most customers generate
+minimal or slightly negative profit margin. Meanwhile, the distributions
+of `avg_days_for_shipping`, `avg_delivery_distance` and
+`avg_discount_rate` exhibit apporximately normal, suggesting that these
+metrics are centered around typical operational values.
+
+```{r include=TRUE, fig.cap="Distributions of Engineered Features"}
+customer_features_no_id %>%
+  select(n_orders, total_sales, avg_profit_ratio, 
+        avg_days_for_shipping, avg_delivery_distance, avg_discount_rate) %>%
+  pivot_longer(everything(), names_to = "Feature", values_to = "Value") %>%
+  ggplot(aes(x = Value)) +
+  geom_histogram(bins = 30, fill = "steelblue", alpha = 0.7, color = "white") +
+  facet_wrap(~Feature, scales = "free", ncol = 3) +
+  theme_minimal() +
+  labs(x = "Value", y = "Frequency") +
+  theme(strip.text = element_text(size = 9, face = "bold"))
+```
+
+## Feature Selection
+
+To prepare the data for clustering, three feature selection steps were
+applied. First, near-zero variance features were removed using
+`nearZeroVar` to eliminate variables with little meaningful variation.
+Next, a correlation analysis was conducted and features with \|r\|\>0.8
+were excluded to reduce redundancies. The resulting correlation matrix
+is shown in Figure 2 for reference.
+
+```{r include=FALSE}
+
+# Identify and remove NZV features
+nzv <- nearZeroVar(customer_features_no_id, saveMetrics = TRUE)
+nzv_features <- rownames(nzv[nzv$nzv == TRUE, ])
+
+cat("Near-zero variance features found:", length(nzv_features), "\n")
+if(length(nzv_features) > 0) {
+  cat("Removing:", paste(nzv_features, collapse = ", "), "\n")
+}
+
+features_after_nzv <- customer_features_no_id %>%
+  dplyr::select(-all_of(nzv_features))
+
+cat("Features remaining:", ncol(features_after_nzv), "\n")
+
+```
+
+```{r corr-matrix, include=TRUE, fig.width=20, fig.height=20, fig.cap="Feature Correlation Matrix", fig.pos="H"}
+# Calculate correlation matrix
+cor_matrix <- cor(features_after_nzv, use = "complete.obs")
+
+corrplot(cor_matrix[1:ncol(features_after_nzv), 1:ncol(features_after_nzv)], 
+         method = "color", 
+         type = "upper",
+         tl.cex = 0.7, 
+         tl.col = "black",
+         mar = c(0,0,2,0))
+```
+
+Table 5 shows the pairwise variables that have correlation greater than
+0.8. These variables were removed from the dataset as highly correlated
+features can create redundancy and bias distance-based clustering.
+
+```{r, fig.cap="corr-gt-0.8", include=TRUE}
+high_cor_pairs <- which(abs(cor_matrix) > 0.80 & abs(cor_matrix) < 1, arr.ind = TRUE)
+high_cor_pairs_df <- data.frame(
+  Feature1 = rownames(cor_matrix)[high_cor_pairs[,1]],
+  Feature2 = colnames(cor_matrix)[high_cor_pairs[,2]],
+  Correlation = round(cor_matrix[high_cor_pairs], 3)
+) %>%
+  filter(Feature1 < Feature2) %>%  # Remove duplicates
+  arrange(desc(abs(Correlation)))
+
+ kable(high_cor_pairs_df, booktabs = TRUE, row.names = FALSE,
+        col.names = c("Feature 1", "Feature 2", "Correlation"),
+        caption = "Pairwise Features with Correlation > 0.80") %>%
+    kable_styling(latex_options = "HOLD_position", font_size = 9)
+```
+
+```{r include=FALSE}
+# Remove features with |correlation| > 0.80
+high_cor <- findCorrelation(cor_matrix, cutoff = 0.8, names = TRUE)
+
+cat("\nHighly correlated features (|r| > 0.80):", length(high_cor), "\n")
+
+features_after_cor <- features_after_nzv %>%
+  dplyr::select(-all_of(high_cor))
+
+cat("Features remaining:", ncol(features_after_cor), "\n")
+```
+
+```{r include=FALSE}
+# VIF 
+
+# Calculate VIF
+vif_formula <- as.formula(paste(names(features_after_cor)[1], "~ ."))
+vif_model <- lm(vif_formula, data = features_after_cor)
+vif_values <- vif(vif_model)
+  
+# Remove VIF > 10
+high_vif <- names(vif_values[vif_values > 10])
+  
+cat("Features with VIF > 10:", length(high_vif), "\n")
+  
+features_after_vif <- features_after_cor %>%
+  dplyr::select(-all_of(high_vif))
+
+cat("Features remaining:", ncol(features_after_vif), "\n")
+```
+
+We then further evaluated multicollinearity using Variance Inflation
+Factor (VIF) analysis. Following standard practice, features with VIF \>
+10 were identified as exhibiting problematic multicollinearity and
+removed from the feature set. In our analysis, none of the features
+exhibit high VIF, thus no features were removed in this step.
+
+## Principal Component Analysis (PCA)
+
+To address the curse of dimensionality and improve clustering stability,
+we apply Principal Component Analysis (PCA) using `prcomp()` function
+with scaling enabled. PCA is used to reduce the feature space while
+retaining key variance patterns and is particularly beneficial when
+features are correlated and exhibit high dimensionality
+[@jolliffe2016principal].
+
+```{r, include=FALSE}
+set.seed(42)
+
+# Apply PCA
+pca_result <- prcomp(features_after_vif, scale. = TRUE)
+
+# Calculate variance explained
+variance_explained <- pca_result$sdev^2 / sum(pca_result$sdev^2)
+cumulative_variance <- cumsum(variance_explained)
+n_pcs <- which(cumulative_variance >= 0.85)[1]
+df_pca <- pca_result$x[, 1:n_pcs]
+
+cat("\n=== PCA Summary ===\n")
+cat("Original dimensions:", ncol(features_after_vif), "features\n")
+cat("Reduced dimensions:", n_pcs, "components\n")
+cat("Variance retained:", round(cumulative_variance[n_pcs] * 100, 1), "%\n")
+cat("Dimensionality reduction:", round((1 - n_pcs/ncol(features_after_vif)) * 100, 1), "%\n\n")
+
+# Feature loadings for top PCs
+cat("Top 3 contributing features per PC:\n")
+for(i in 1:min(5, n_pcs)) {
+  loadings_pc <- pca_result$rotation[, i]
+  top_features <- names(sort(abs(loadings_pc), decreasing = TRUE)[1:3])
+  cat("  PC", i, ":", paste(top_features, collapse = ", "), "\n")
+}
+```
+
+Figure 3 shows the variance explained by each component: variance
+concentrates in the first few components, with diminishing returns
+beyond PC6. We retain 6 components explaining 86.5% of total variance
+using an 85% threshold, reducing dimensionality from
+`r ncol(features_after_vif)` features to 6 components while preserving
+key variance structure.
+
+```{r scree-plot, include=TRUE, fig.width=10, fig.height=6, fig.cap="PCA Variance Explained", out.width="80%", fig.pos="H"}
+# Set up the plot
+par(mar = c(5, 5, 4, 5))
+
+# Plot individual variance (left y-axis)
+n_show <- length(variance_explained)
+plot(1:n_show, variance_explained[1:n_show] * 100, 
+     type = "b", pch = 19, col = "steelblue", lwd = 2,
+     xlab = "Principal Component", 
+     ylab = "Variance Explained (%)",
+     main = "Scree Plot with Cumulative Variance",
+     cex.lab = 1.2, cex.main = 1.3,
+     ylim = c(0, max(variance_explained * 100) * 1.1))
+grid()
+
+# Add cumulative variance (right y-axis)
+par(new = TRUE)
+plot(1:n_show, cumulative_variance[1:n_show] * 100, 
+     type = "b", pch = 17, col = "coral", lwd = 2,
+     xlab = "", ylab = "", 
+     axes = FALSE,
+     ylim = c(0, 100))
+
+# Add right y-axis
+axis(4, at = seq(0, 100, 20), col.axis = "coral", col = "coral")
+mtext("Cumulative Variance Explained (%)", side = 4, line = 3, col = "coral", cex = 1.2)
+
+# Add threshold lines
+abline(h = 85, lty = 2, col = "darkgreen", lwd = 1.5)
+
+# Add text
+text(n_show * 0.5, 88, "85% threshold", 
+     col = "darkgreen", font = 2, cex = 1.0)
+
+# Add legend
+legend("right", 
+       legend = c("Individual Variance", "Cumulative Variance"),
+       col = c("steelblue", "coral"),
+       lty = c(1, 1, 2, 2),
+       pch = c(19, 17, NA, NA),
+       lwd = 2,
+       cex = 0.9)
+
+par(mar = c(5, 4, 4, 2))
+```
+
+```{r pca-loadings, include=TRUE}
+# Create formulas for each PC showing top 3 loadings as percentages
+pc_formulas <- data.frame(
+  Component = character(),
+  Features = character(),
+  stringsAsFactors = FALSE
+)
+
+for(i in 1:n_pcs) {
+  pc_loadings <- pca_result$rotation[, i]
+  
+  # Get top 3 by absolute value
+  top_3_idx <- order(abs(pc_loadings), decreasing = TRUE)[1:3]
+  top_3_features <- names(pc_loadings)[top_3_idx]
+  top_3_values <- pc_loadings[top_3_idx]
+  
+  # Convert loadings to percentages (just multiply by 100)
+  loading_pct <- round(top_3_values * 100, 1)
+  
+  # Build string with percentages
+  feature_strings <- sapply(1:3, function(j) {
+    sign_str <- ifelse(loading_pct[j] >= 0, "+", "")
+    paste0(top_3_features[j], "(", sign_str, loading_pct[j], "%)")
+  })
+  
+  features_str <- paste(feature_strings, collapse = ", ")
+  
+  pc_formulas <- rbind(pc_formulas, 
+                       data.frame(Component = paste0("PC", i),
+                                  Features = features_str))
+}
+
+kable(pc_formulas,
+      booktabs = TRUE,
+      row.names = FALSE,
+      col.names = c("PC", "Top 3 Feature Loadings"),
+      caption = "Principal Component Loadings",
+      align = c("c", "l")) %>%
+  kable_styling(latex_options = "HOLD_position", font_size = 9) %>%
+  column_spec(1, bold = TRUE, width = "1.5cm") %>%
+  column_spec(2, width = "12.5cm") %>%
+  add_footnote("Percentages represent loading coefficients; sign indicates direction")
+```
+
+Table 6 reveals the behavioural dimensions captured by each principal
+component.
+
+-   **PC1** represents **customer value and geographic reach**: negative
+    loadings on financial metrics combined with positive loading on
+    delivery distance distinguish low-value, long-distance customers
+    (high PC1) from high-value, regional customers (low PC1).
+
+-   **PC2** clearly captures **profitability**, separating
+    margin-generating customers from cost-intensive accounts.
+
+-   **PC3** reflects **delivery speed**, with negative loadings
+    indicating faster shipping performance (higher PC3 = shorter
+    delivery times).
+
+-   **PC4** represents **delivery reliability risk**, with positive
+    loading on late deliveries identifying problematic fulfillment
+    patterns.
+
+-   **PC5** distinguishes **premium customers** who pay full price for
+    high-value orders from discount-dependent buyers.
+
+-   **PC6** captures **strategic high-value discount sensitivity**,
+    identifying customers who combine large purchases with negotiated
+    pricing.
+
+These six orthogonal dimensions transformed the 16 correlated features
+into interpretable behavioural axes for clustering.
+
+```{r include=FALSE}
+# Create a copy of the PCA-reduced data for clustering
+# This naming convention maintains compatibility with existing code
+df_preprocess <- df_pca
+
+cat("\nPreprocessing complete. Ready for clustering.\n")
+cat("Dimensions:", dim(df_preprocess), "\n")
+```
+
+All subsequent clustering algorithms (K-Means, DBSCAN, GMM) will be
+applied to this PCA-reduced feature space rather than the original
+scaled features. However, cluster profiling will still be using the
+original unscaled features for business interpretability.
+
+# Models
+
+In this section, we introduce the clustering algorithms applied to the
+preprocessed dataset.
+
+## K-Means Clustering
+
+K-Means clustering is a centroid-based partitioning algorithm that
+groups unlabeled data points into $k$ clusters by minimizing
+within-cluster variance. It is widely adopted due to its computational
+efficiency [@JAIN2010651].
+
+### Model description
+
+K-Means solves an optimization problem that partitions the dataset into
+k disjoint clusters by minimizing the within-cluster sum of squares
+(WCSS):
+
+$$\min_{\mathcal{C}} \sum_{i=1}^{k} \sum_{x \in C_i} ||x - c_i||^2$$
+where $C_i$ represents the cluster $i$ and
+$c_i = \frac{1}{|C_i|} \sum_{x \in C_i} x$ represents the centroid of
+cluster $i$
+
+The iterative algorithm that we are specifically using is called Lloyd's
+algorithm [@lloyd1982kmeans]. Lloyd's algorithm solves this non-convex
+optimization problem through an algorithm called Block Coordinate
+Descent (BCD) [@Tang2014Scaling] which minimizes a function by
+iteratively updating one block of variables at a time while keeping
+others fixed.
+
+**Step 0 (Initialization):** Initialize $t=0$ and cluster centers:
+$c_1, c_2,..., c_K$
+
+**Step 1 (Assignment):** Fix centroids $c^{(t-1)}$, optimize
+assignments:
+$$\delta^{(t)} = \arg\min_{\delta}\sum_{j=1}^{N} \sum_{i=1}^{K} \delta_{ij}(c_i^{t-1} - x_j)^2$$
+This assigns each point to its nearest centroid.
+
+**Step 2 (Update):** Fix assignments $\delta^{(t)}$, optimize centroids:
+$$c^{(t)} = \arg\min_{c} \sum_{j=1}^{N} \sum_{i=1}^{K} \delta_{ij}^{(t)}(c_i - x_j)^2$$
+The centroids are then recalculated as the mean of assigned points:
+$$c_i^{(t)} = \frac{\sum_{j=1}^{N} \delta_{ij}^{(t)} x_j}{\sum_{j=1}^{N} \delta_{ij}^{(t)}}$$
+
+Each step monotonically decreases the objective function. However, the
+non-convex nature means global optimality is not guaranteed. Despite its
+efficiency, K-Means is sensitive to centroid initialization.
+Advancements like K-Means++ [@arthur2007kmeansplusplus] improve
+initialization by employing a probabilistic approach, while K-Means\|\|
+[@bahmani2012scalable] extends this technique to large-scale, parallel
+environments.
+
+### Training process and hyperparameter tuning
+
+```{r, include = FALSE}
+set.seed(42)
+
+# Elbow Method: Calculate WCSS for k = 1 to 10
+wss <- sapply(1:10, function(k) {
+  kmeans(df_preprocess, centers = k, nstart = 25, iter.max = 300, 
+         algorithm = "Lloyd")$tot.withinss
+})
+
+# Silhouette Method: Use ALL customers (no sampling needed!)
+sil_scores <- sapply(2:10, function(k) {
+  km <- kmeans(df_preprocess, centers = k, nstart = 25, iter.max = 300, 
+               algorithm = "Lloyd")
+  
+  # Calculate silhouette on ALL data
+  ss <- silhouette(km$cluster, dist(df_preprocess))
+  mean(ss[, 3])
+})
+
+elbow_k <- 6
+sil_k <- which.max(sil_scores) + 1
+
+cat("Elbow method suggests k =", elbow_k, "\n")
+cat("Silhouette method suggests k =", sil_k, "\n\n")
+
+cat("Silhouette scores (all", nrow(df_preprocess), "customers):\n")
+for(i in 1:length(sil_scores)) {
+  cat("k =", i+1, ": ", round(sil_scores[i], 4), "\n")
+}
+
+optimal_k <- sil_k
+cat("\n>>> Selected optimal k =", optimal_k, "<<<\n\n")
+```
+
+To select the optimal k for our final model, we utilized both elbow
+method and silhouette method. The results are shown in Figure 4. Both
+elbow method and silhouette method suggest that k=6 is optimal. Hence,
+we will use **k=6** to train the final K-Means model with `nstart = 25`
+and max iterations = 300.
+
+```{r kmeans-elbow-sil,include=TRUE, fig.width=20, fig.height=5, out.width="100%", fig.cap="Optimal Selection for k", fig.pos="H"}
+par(mfrow = c(1, 2), mar = c(4.5, 4.5, 3, 1))
+
+# Elbow plot
+plot(1:10, wss, type = "b", pch = 19, col = "steelblue", lwd = 2,
+     xlab = "Number of Clusters (k)", 
+     ylab = "Within-Cluster Sum of Squares",
+     main = "Elbow Method",
+     cex.lab = 1.1, cex.main = 1.3)
+grid()
+abline(v = elbow_k, lty = 2, col = "red", lwd = 2)
+text(elbow_k + 0.5, max(wss) * 0.9, 
+     paste("k =", elbow_k), col = "red", cex = 1.2)
+
+# Silhouette plot
+plot(2:10, sil_scores, type = "b", pch = 19, col = "coral", lwd = 2,
+     xlab = "Number of Clusters (k)",
+     ylab = "Average Silhouette Width",
+     main = paste("Silhouette Method"),
+     cex.lab = 1.1, cex.main = 1.3)
+grid()
+abline(v = sil_k, lty = 2, col = "red", lwd = 2)
+text(sil_k + 0.5, max(sil_scores) * 0.95, 
+     paste("k =", sil_k), col = "red", cex = 1.2)
+
+par(mfrow = c(1, 1))
+```
+
+## DBSCAN
+
+Density-Based Spatial Clustering of Applications with Noise (DBSCAN) is
+a density-based clustering algorithm that groups unlabeled, closely
+packed data points together into several clusters [@ester1996density].
+Unlike centroid-based methods (K-Means), DBSCAN can discover clusters of
+arbitrary shape and is effective at identifying noise (outliers).
+
+### Model Description
+
+DBSCAN operates by classifying each point in the dataset based on the
+density of its local neighborhood, defined by two key hyperparameters:
+
+-   $\epsilon$: The radius defining the $\epsilon$-neighborhood of a
+    point. Two points $p,q$ are considered to be neighbours if the
+    distance between them, $dist(p,q)\leq\epsilon$
+
+-   **minPts**: The minimum number of data points required to form a
+    cluster/core point. It defines the density requirement for forming a
+    cluster.
+
+Data points in DBSCAN can be classified into one of the three
+categories:
+
+-   **Core Point**: A point $p$ is a core point if its
+    $\epsilon$-neighborhood contains at least `minPts` points:
+    $$|N_\epsilon(p)|\geq\text{minPts}$$
+
+-   **Border Point**: A point $p$ is a border point if it is not a core
+    point, but lies within the $\epsilon$-neighborhood of some core
+    point.
+
+-   **Noise Point**: A point that is neither a core point nor a border
+    point.
+
+The DBSCAN algorithm identifies clusters through a single-pass
+density-based traversal. Unlike iterative optimization methods, DBSCAN
+deterministically partitions the dataset by expanding clusters from
+high-density seed points, making it a non-iterative, region-growing
+approach.
+
+**Step 0 (Initialization):** Initialize cluster counter $k = 0$.
+
+**Step 1 (Core Point Identification):** For each unvisited point $x_i$,
+compute the $\epsilon$-neighborhood and identify the core points:
+$$N_\epsilon(x_i) = \{x_j \in D \mid \|x_i - x_j\| \leq \epsilon\}$$
+**Step 2 (Cluster Expansion):** For each unassigned core point,
+increment $k$, assign the core point to cluster $k$, and iteratively add
+all density-reachable points.
+
+**Step 3 (Final Assignment):** Assign remaining unassigned points within
+$\epsilon$ of a core point as border points, and mark all others as
+noise (cluster 0).
+
+The algorithm operates efficiently with a time complexity of
+$O(N \log N)$. While DBSCAN is robust to arbitrary shapes, it assumes
+clusters have similar density levels. Advanced variants like HDBSCAN
+[@campello2013density] and OPTICS [@ankerst1999optics] address these
+limitations.
+
+### Training process and hyperparameter tuning
+
+**K-Distance graph for model selection** To select an appropriate
+$\epsilon$ value, we employed the k-distance graph method to analyze the
+density distribution. Following Sander et al. (1998)
+[@sander1998gdbscan], we set $\text{minPts} = 2 \times D = 12$ for
+statistical stability in high-dimensional spaces, where $D$ = 6 is the
+number of principal components.
+
+```{r include=FALSE}
+set.seed(42)
+
+dimensionality <- ncol(df_preprocess)
+final_minpts <- 2*dimensionality
+
+kNNdist_results <- list()
+
+knn_dist <- kNNdist(df_preprocess, k = final_minpts)
+knn_sorted <- sort(knn_dist)
+
+# Find elbow using second derivative
+smooth_dist <- smooth.spline(1:length(knn_sorted), knn_sorted, spar = 0.35)
+second_deriv <- diff(diff(smooth_dist$y))
+elbow_idx <- which.max(abs(second_deriv)) + 1
+elbow_eps <- knn_sorted[elbow_idx]
+```
+
+Figure 5 shows the k-distance graph for minPts = 12. The curve reveals
+relatively uniform density with a sharp increase beyond point 20,551,
+indicating extreme outliers. To identify the elbow computationally, we
+apply the **second derivative method**, which detects the point of
+maximum curvature—the sharpest bend in the curve where the rate of
+change of slope is greatest. This yields $\epsilon$ = 2.6567, marking
+the optimal density threshold that separates dense cluster regions from
+sparse noise.
+
+```{r k-distance-graph, include=TRUE, fig.width=8, fig.height=5, out.width="70%", fig.cap="K-Distance Graph for Epsilon Selection", fig.pos="H"}
+plot(knn_sorted, 
+     type = "l", 
+     col = "steelblue", 
+     lwd = 2,
+     main = paste0("K-Distance Graph (minPts = ", final_minpts, ")"),
+     xlab = "Points (sorted by k-distance)",
+     ylab = paste0(final_minpts, "-Nearest Neighbor Distance"),
+     cex.main = 1.2,
+     cex.lab = 1.1)
+grid(col = "gray90")
+
+# Mark elbow
+abline(h = elbow_eps, col = "red", lty = 2, lwd = 2)
+abline(v = elbow_idx, col = "red", lty = 3, lwd = 1.5)
+
+text(length(knn_sorted) * 0.6, elbow_eps * 1.15, 
+     bquote(epsilon == .(round(elbow_eps, 4))),
+     col = "red", cex = 1.1, font = 2)
+```
+
+**Epsilon Validation via Silhouette Optimization**
+
+We validated the elbow-suggested $\epsilon$ by testing a range of values
+(2.1 to 3.5) and evaluating cluster quality via silhouette scores,
+computed on non-noise points only. This two-stage approach ensures
+robust parameter selection by balancing geometric density considerations
+with empirical cluster quality metrics.
+
+```{r, include=FALSE}
+set.seed(42)
+
+# Test epsilon range: 2.1 to 3.5
+eps_range <- sort(c(seq(2.1, 3.5, by = 0.2),elbow_eps))
+
+cat("Testing epsilon values from", min(eps_range), "to", max(eps_range), "\n\n")
+
+# Calculate silhouette for each epsilon
+sil_scores_eps <- numeric(length(eps_range))
+n_clusters_eps <- numeric(length(eps_range))
+noise_pct_eps <- numeric(length(eps_range))
+
+for(i in seq_along(eps_range)) {
+  eps_val <- eps_range[i]
+  
+  # Run DBSCAN
+  db_result <- dbscan::dbscan(df_preprocess, eps = eps_val, minPts = final_minpts)
+  
+  n_clusters <- length(unique(db_result$cluster[db_result$cluster != 0]))
+  n_noise <- sum(db_result$cluster == 0)
+  pct_noise <- (n_noise / nrow(df_preprocess)) * 100
+  
+  n_clusters_eps[i] <- n_clusters
+  noise_pct_eps[i] <- pct_noise
+  
+  # Calculate silhouette (excluding noise)
+  if(n_clusters >= 2 && n_noise < nrow(df_preprocess)) {
+    non_noise_idx <- db_result$cluster != 0
+    if(sum(non_noise_idx) > n_clusters) {
+      sil_scores_eps[i] <- index.S(dist(df_preprocess[non_noise_idx, ]), 
+                                    db_result$cluster[non_noise_idx])
+    } else {
+      sil_scores_eps[i] <- NA
+    }
+  } else {
+    sil_scores_eps[i] <- NA
+  }
+  
+  cat("$\\epsilon$ =", round(eps_val, 2), ": ", n_clusters, "clusters,", 
+      round(pct_noise, 1), "% noise, sil =", 
+      ifelse(is.na(sil_scores_eps[i]), "N/A", round(sil_scores_eps[i], 3)), "\n")
+}
+
+# Find best epsilon by silhouette
+valid_idx <- which(!is.na(sil_scores_eps) & n_clusters_eps >= 2 & noise_pct_eps < 20)
+if(length(valid_idx) > 0) {
+  best_eps_idx <- valid_idx[which.max(sil_scores_eps[valid_idx])]
+  best_sil_eps <- eps_range[best_eps_idx]
+} else {
+  best_sil_eps <- elbow_eps
+}
+
+cat("\nK-distance elbow suggests eps =", round(elbow_eps, 3), "\n")
+cat("\nSilhouette method suggests eps =", round(best_sil_eps, 3), "\n")
+
+final_eps <- elbow_eps
+```
+
+Figure 6 shows the silhouette scores across the tested $\epsilon$ range.
+Notably, silhouette optimization achieves its maximum at exactly
+$\epsilon$ = 2.657 (marked by the vertical red line), which coincides
+precisely with the elbow identified via the second derivative method in
+the k-distance graph. This convergence of two independent approaches:
+geometric (k-distance curvature) and quality-based (cluster cohesion)
+provides strong validation for our parameter selection. We therefore
+select $\epsilon$ = 2.657 and **minPts = 12** as optimal parameters for
+the final DBSCAN model.
+
+```{r eps-validation, include=TRUE, fig.width=8, fig.height=5, out.width="70%", fig.cap="Epsilon Validation via Silhouette Optimization", fig.pos="H"}
+plot(eps_range, sil_scores_eps, 
+     type = "b", pch = 19, col = "steelblue", lwd = 2,
+     xlab = expression(epsilon), 
+     ylab = "Silhouette Score",
+     main = paste0("Silhouette-Based Epsilon Selection (minPts = ", final_minpts, ")"),
+     cex.lab = 1.1, cex.main = 1.2)
+grid()
+
+# Mark optimal epsilon
+abline(v = final_eps, lty = 2, col = "red", lwd = 2)
+text(final_eps + 0.15, max(sil_scores_eps, na.rm = TRUE) * 0.9, 
+     bquote(epsilon[opt] == .(round(final_eps, 4))),
+     col = "red", cex = 1.1, font = 2)
+
+# Add annotation for convergence
+text(final_eps + 0.15, max(sil_scores_eps, na.rm = TRUE) * 0.8,
+     "Matches k-distance elbow",
+     col = "red", cex = 0.9)
+```
+
+## Gaussian Mixture Model
+
+The Gaussian Mixture Model (GMM) is a probabilistic model-based
+clustering algorithm that assumes all data points are generated from a
+weighted combination of several Gaussian distributions
+[@mclachlan2019finite]. Each Gaussian component represents a cluster,
+characterized by its mean ($\mu$) and covariance matrix
+($\Sigma$).Unlike hard-assignment methods (K-Means), GMM uses a
+soft-assignment method, providing a probability ($\tau_{ik}$) that each
+point belongs to each cluster, which is effective for datasets with
+overlapping cluster behaviours.
+
+### Model description
+
+GMM models the data distribution as a weighted sum of $K$ Gaussian
+components, where the probability density function for a data point
+$x_i$ is given by:
+
+$$p(x_i) = \sum_{k=1}^{K} \pi_k \mathcal{N}(x_i \mid \mu_k, \Sigma_k)$$
+
+The goal of GMM is to estimate the parameters
+$\theta = \{\pi_k, \mu_k, \Sigma_k\}_{k=1}^{K}$ that maximize the
+log-likelihood of the observed data:
+$$\mathcal{L}(\theta) = \sum_{i=1}^{N} \log(p(x_i)) $$
+
+A simple formulation of the problem would be deriving the Maximum
+Likelihood Estimator (MLE) by maximizing the log-likelihood but the
+problem has no closed-form solution due to the summation inside the
+logarithm [@mackey2014unsupervised]. Instead, the
+Expectation-Maximization (EM) algorithm could provide an iterative
+solution by introducing latent variables $\tau_{ik}$ indicating the
+probability that point $x_i$ belongs to component $k$.
+
+The EM algorithm iteratively refines the parameters until convergence,
+monotonically increasing the log-likelihood.
+
+**Step 0 (Initialization):** Initialize $t=0$ and parameters:
+$\theta^{(0)} = (\pi_k^{(0)}, \mu_k^{(0)}, \Sigma_k^{(0)})$ for
+$k = 1, ..., K$
+
+**Step 1 (E-step - Expectation):** Compute the posterior probability,
+which is a vector of probabilities across all $K$ clusters
+[$\tau_{i1}^{(t)}, \tau_{i2}^{(t)}, ..., \tau_{iK}^{(t)}$]. The
+probability that $x_i$ belongs to cluster $k$ is given by:
+
+$$\tau_{ik}^{(t)} = \frac{\pi_k^{(t-1)} \mathcal{N}(x_i \mid \mu_k^{(t-1)}, \Sigma_k^{(t-1)})}{\sum_{j=1}^{K} \pi_j^{(t-1)} \mathcal{N}(x_i \mid \mu_j^{(t-1)}, \Sigma_j^{(t-1)})}$$
+Note that: $\sum_{k=1}^{K} \tau_{ik}^{(t)} = 1$ for each point $i$.
+
+**Step 2 (M-step - Maximization):** Fix responsibilities
+$\tau_{ik}^{(t)}$, update parameters
+$\theta^{(t)} = (\pi_k^{(t)}, \mu_k^{(t)}, \Sigma_k^{(t)})$ by
+maximizing the expected log-likelihood. The definition of parameters are
+given as follows:
+
+-   **Mixing coefficients:**
+    $$\pi_k^{(t)} = \frac{1}{N} \sum_{i=1}^{N} \tau_{ik}^{(t)}$$
+
+-   **Means:**
+    $$\mu_k^{(t)} = \frac{\sum_{i=1}^{N} \tau_{ik}^{(t)} x_i}{\sum_{i=1}^{N} \tau_{ik}^{(t)}}$$
+
+-   **Covariances:**
+    $$\Sigma_k^{(t)} = \frac{\sum_{i=1}^{N} \tau_{ik}^{(t)} (x_i - \mu_k^{(t)})(x_i - \mu_k^{(t)})^T}{\sum_{i=1}^{N} \tau_{ik}^{(t)}}$$
+
+Like K-Means, GMM is sensitive to initialization and requires the number
+of clusters ($K$) to be specified. Bayesian GMM (BGMM) [@bishop2006prml]
+addresses the latter by utilizing Dirichlet priors to automatically
+infer the optimal $K$.
+
+### Training process and hyperparameter tuning
+
+GMM employs two information criteria for model selection:
+
+-   **Bayesian Information Criterion (BIC)**: Balances fit and
+    complexity with stronger penalty
+    $$\text{BIC} = -2\log(\mathcal{L}) + p\log(N)$$
+
+-   **Integrated Completed Likelihood (ICL)**: Extends BIC by penalizing
+    poorly separated clusters
+    $$\text{ICL} = \text{BIC} - 2 \times \text{Entropy}$$ where
+    $\mathcal{L}$ is the maximized likelihood, $p$ is the number of
+    parameters, and $N$ is the sample size.
+
+```{r, include=FALSE}
+set.seed(42)
+
+# Test K = 2 to 10
+k_range <- 2:10
+bic_values <- numeric(length(k_range))
+icl_values <- numeric(length(k_range))
+model_types <- character(length(k_range))
+
+for(i in seq_along(k_range)) {
+  k <- k_range[i]
+  gmm_temp <- Mclust(df_preprocess, G = k)
+  
+  bic_values[i] <- gmm_temp$bic
+  icl_temp <- mclustICL(df_preprocess, G = k)
+  icl_values[i] <- max(icl_temp, na.rm = TRUE)
+  model_types[i] <- gmm_temp$modelName
+}
+
+# Find peaks
+bic_optimal_idx <- which.max(bic_values)
+bic_optimal_k <- k_range[bic_optimal_idx]
+icl_optimal_k <- k_range[which.max(icl_values)]
+
+# Select local maximum
+optimal_k_gmm <- 6
+local_max_idx <- which(k_range == optimal_k_gmm)
+optimal_model <- model_types[local_max_idx]
+
+cat("BIC peak: K =", bic_optimal_k, "\n")
+cat("ICL peak: K =", icl_optimal_k, "\n")
+cat("Selected: K =", optimal_k_gmm, "(", optimal_model, ")\n")
+```
+
+**Local Maximum Selection Strategy**
+
+Figure 7 shows BIC and ICL scores across K = 2-10. Both criteria reach
+global maxima at K = `r bic_optimal_k`, the upper search limit,
+suggesting monotonic increase rather than true convergence. However,
+their behavior differs: **BIC exhibits a clear local maximum at K =
+`r optimal_k_gmm`** (BIC: `r round(bic_values[local_max_idx], 2)`)
+followed by sharp decline at K = 7, while ICL continues increasing
+monotonically toward the boundary.
+
+We prioritized BIC's local peak over ICL's monotonic increase. BIC's
+decline after K = 6 signals that additional components increase model
+complexity without proportionate improvement in fit, suggesting
+overfitting. In contrast, ICL's continued increase likely reflects its
+entropy term favoring more granular partitions regardless of genuine
+structure. The clear inflection point in BIC at K = 6, where the
+criterion peaks before declining, provides stronger evidence of natural
+clustering structure than ICL's boundary-limited maximum. We therefore
+select **K = 6** with **`r optimal_model`** covariance structure, guided
+by BIC's local maximum as the more conservative and stable indicator of
+true cluster count.
+
+```{r, include=TRUE, fig.width=8, fig.height=5, out.width="70%", fig.cap="GMM Model Selection: BIC and ICL Comparison"}
+par(mar = c(4.5, 4.5, 3, 8), xpd = FALSE, fig.pos="H")
+
+# Normalize values to [0, 1] for plotting on same scale
+bic_norm <- (bic_values - min(bic_values)) / (max(bic_values) - min(bic_values))
+icl_norm <- (icl_values - min(icl_values)) / (max(icl_values) - min(icl_values))
+
+# Create plot
+plot(k_range, bic_norm, type = "b", pch = 19, col = "steelblue", lwd = 2.5,
+     xlab = "Number of Components (K)",
+     ylab = "Normalized Score (Higher is Better)",
+     main = "GMM Model Selection: BIC and ICL Comparison",
+     ylim = c(0, 1.05),
+     cex.lab = 1.1, cex.main = 1.3, cex.axis = 1.0)
+grid()
+
+lines(k_range, icl_norm, type = "b", pch = 15, col = "coral", lwd = 2.5)
+
+# Mark optimal points (for reference)
+points(bic_optimal_k, bic_norm[bic_optimal_idx], pch = 19, col = "steelblue", cex = 2, lwd = 2)
+
+# Add vertical lines
+abline(v = optimal_k_gmm, lty = 2, col = "red", lwd = 2)  # Selected K
+
+# Add text annotation for selected K
+text(optimal_k_gmm, 0.5, paste0("Selected\nK = ", optimal_k_gmm), 
+     col = "red", font = 2, cex = 1.1, pos = 4)
+
+# Add legend
+par(xpd = TRUE)
+legend("right", inset = c(-0.25, 0),
+       legend = c(
+         paste0("BIC"),
+         paste0("ICL")
+       ),
+       col = c("steelblue", "coral"),
+       pch = c(19, 15, 19),
+       lty = c(1, 1, 1),
+       lwd = c(2.5, 2.5, 3),
+       cex = 1.0,
+       bg = "white",
+       box.lwd = 1)
+par(xpd = FALSE)
+```
+
+# Results
+
+## Overview of Clustering Solutions
+
+Table 7 shows the **overview of clustering solutions** implemented in
+this project (K-Means, DBSCAN, GMM). The table summarizes the number of
+clusters, approaches and hyperparameter selection method.
+
+```{r, include=TRUE}
+# Summary comparison table
+clustering_summary <- data.frame(
+  Algorithm = c("K-Means", "DBSCAN", "GMM"),
+  Clusters = c(6, 2, 6),
+  Noise_Points = c(0, 52, 0),
+  Noise_Pct = c("0%", paste0(round(0.3, 1), "%"), "0%"),
+  Approach = c("Centroid-based", "Density-based", "Model-based"),
+  Assignment = c("Hard", "Hard + Noise", "Soft (Probabilistic)")
+)
+
+kable(clustering_summary,
+      booktabs = TRUE,
+      col.names = c("Algorithm", "Clusters", "Noise Points", "Noise %", 
+                    "Approach", "Assignment"),
+      caption = "Overview of Clustering Solutions") %>%
+  kable_styling(latex_options = c("hold_position","striped"),
+                full_width = FALSE,      # << stops table from expanding to full width
+                position = "center",
+                font_size = 9) %>%
+  column_spec(1:4, width = "1.5cm") %>%
+  # column_spec(2:4, width = "1.5cm") %>%
+  column_spec(5:7, width = "2.5cm")
+```
+
+## Qualitative Analysis
+
+```{r plot-function, include=FALSE}
+# Simple plotting function
+plot_pca <- function(clusters, pca_result, title = "") {
+  pca_data <- data.frame(
+    PC1 = pca_result$x[, 1],
+    PC2 = pca_result$x[, 2],
+    Cluster = factor(clusters)
+  )
+  
+  centroids <- pca_data %>%
+    filter(Cluster != "0") %>%
+    group_by(Cluster) %>%
+    summarise(PC1 = mean(PC1), PC2 = mean(PC2), .groups = "drop")
+  
+  # Get colors - gray for cluster 0, Set1 for others
+  n_clusters <- length(unique(clusters))
+  colors <- c("gray70", RColorBrewer::brewer.pal(max(3, n_clusters-1), "Set1"))
+  
+  ggplot(pca_data, aes(x = PC1, y = PC2, color = Cluster)) +
+    geom_point(alpha = 0.6, size = 1.5) +
+    geom_point(data = centroids, aes(x = PC1, y = PC2),
+               color = "black", shape = 4, size = 5, stroke = 2) +
+    scale_color_manual(values = colors) +
+    labs(title = title, x = "PC1", y = "PC2") +
+    theme_minimal() +
+    theme(legend.position = "bottom",
+          plot.title = element_text(hjust = 0.5, face = "bold"))
+}
+```
+
+```{r train-models, include=FALSE}
+set.seed(42)
+
+# K-Means
+kmeans_final <- kmeans(df_preprocess, centers = elbow_k, nstart = 25, iter.max = 300)
+
+# DBSCAN
+dbscan_final <- dbscan::dbscan(df_preprocess, eps = final_eps, minPts = final_minpts)
+
+# GMM
+gmm_final <- Mclust(df_preprocess, G = optimal_k_gmm)
+```
+
+```{r all-methods-pca, include=TRUE, fig.width=20, fig.height=6, out.width="100%", fig.cap="Comparison of Clustering Methods in PCA Space", fig.pos="H"}
+# Create all three plots
+p1 <- plot_pca(kmeans_final$cluster, pca_result, "K-Means")
+p2 <- plot_pca(dbscan_final$cluster, pca_result, "DBSCAN")
+p3 <- plot_pca(gmm_final$classification, pca_result, "GMM")
+
+# Arrange side by side
+grid.arrange(p1, p2, p3, ncol = 3)
+```
+
+Figure 8 compares clustering results across all three methods in PCA
+space. **K-Means** (left) produces 6 well-separated clusters with points
+forming compact clouds around their centroids, demonstrating clear hard
+partitioning. **DBSCAN** (center) identifies 2 dense clusters and
+explicitly labels 0.3% of customers as noise (gray points), with Cluster
+1 containing the majority of customers, indicating concentrated
+behavioural patterns. **GMM** (right) reveals 6 Gaussian components with
+overlapping boundaries, reflecting probabilistic soft assignment where
+customers can have partial membership across segments (model type:
+`r gmm_final$modelName`). The comparison highlights each method's
+distinct approach: K-Means' geometric partitioning, DBSCAN's
+density-based outlier detection and GMM's probabilistic modelling.
+
+## Quantitative Analysis
+
+Clustering performance was assessed using five internal validity indices
+that measure the quality of the derived customer segments.
+
+To further determine overall clustering quality, we employ the
+Multi-criteria cluster evaluation approach, which aggregates multiple
+internal validity indices into a single performance score. This
+methodology addresses the challenge of comparing algorithms across
+metrics with different scales and interpretations.
+
+The metrics used are: **Silhouette** ($S$), **Davies-Bouldin** ($DB$),
+**Calinski-Harabasz** ($CH$), **Dunn** ($D$) and **Variance Explained**
+($VE$). Normalized values are scaled to $[0, 1]$; the $DB$ index (lower
+is better) is inverted, while other remains higher is better. The
+weighted performance score ($\text{Score}_m$) for method $m$ aggregates
+the normalized indices:
+
+$$\text{Score}_m = 0.30 \times S_m + 0.25 \times (1-DB_m) + 0.25 \times CH_m + 0.10 \times D_m + 0.10 \times VE_m$$
+The weighting scheme was chosen to reflect the primary goal of this
+project - to identify actionable and well-separated customer segments.
+Therefore, Silhouette score was given the highest priority (30%) as it
+measures both cluster cohesion and cluster separation well. Also,
+Davies-Bouldin and Calinski-Harabasz scores were also given high
+priorities (25% each) as they penalize cluster overlap, which aligns
+with the objective of finding distinct customer segments. The remaining
+indices (Dunn index and Variance Explained) were given lower priorities
+as they represent secondary validation metrics.
+
+```{r eval-function, include=FALSE}
+# Function to calculate all evaluation metrics
+evaluate_clustering <- function(clusters, data, exclude_noise = FALSE) {
+  
+  # Handle noise exclusion for DBSCAN
+  if(exclude_noise) {
+    non_noise_idx <- clusters != 0
+    data <- data[non_noise_idx, ]
+    clusters <- clusters[non_noise_idx]
+  }
+  
+  # Silhouette Score
+  sil_score <- index.S(dist(data), clusters)
+  
+  # Davies-Bouldin Index
+  db_index <- index.DB(data, clusters)$DB
+  
+  # Calinski-Harabasz Index
+  ch_index <- index.G1(data, clusters)
+  
+  # Dunn Index
+  dunn_index <- dunn(distance = NULL, clusters = clusters,
+                     Data = data, method = "euclidean")
+  
+  # Variance Explained (K-Means approximation)
+  temp_kmeans <- kmeans(data, centers = max(clusters), nstart = 1)
+  var_explained <- (temp_kmeans$betweenss / temp_kmeans$totss) * 100
+  
+  # Return as named vector
+  return(c(
+    Silhouette = sil_score,
+    Davies_Bouldin = db_index,
+    Calinski_Harabasz = ch_index,
+    Dunn = dunn_index,
+    Var_Explained = var_explained
+  ))
+}
+```
+
+```{r compute-all-metrics, include=FALSE}
+# Evaluate all three methods
+metrics_kmeans <- evaluate_clustering(kmeans_final$cluster, df_preprocess)
+metrics_dbscan <- evaluate_clustering(dbscan_final$cluster, df_preprocess, exclude_noise = TRUE)
+metrics_gmm <- evaluate_clustering(gmm_final$classification, df_preprocess)
+
+# DBSCAN noise statistics
+n_clusters_dbscan <- length(unique(dbscan_final$cluster[dbscan_final$cluster != 0]))
+n_noise_dbscan <- sum(dbscan_final$cluster == 0)
+pct_noise_dbscan <- round((n_noise_dbscan / nrow(df_preprocess)) * 100, 1)
+
+# Compile metrics
+evaluation_comparison <- data.frame(
+  Method = c("K-Means", "DBSCAN", "GMM"),
+  K = c(elbow_k, n_clusters_dbscan, optimal_k_gmm),
+  Silhouette = c(metrics_kmeans["Silhouette"], 
+                 metrics_dbscan["Silhouette"], 
+                 metrics_gmm["Silhouette"]),
+  Davies_Bouldin = c(metrics_kmeans["Davies_Bouldin"], 
+                     metrics_dbscan["Davies_Bouldin"], 
+                     metrics_gmm["Davies_Bouldin"]),
+  Calinski_Harabasz = c(metrics_kmeans["Calinski_Harabasz"], 
+                        metrics_dbscan["Calinski_Harabasz"], 
+                        metrics_gmm["Calinski_Harabasz"]),
+  Dunn = c(metrics_kmeans["Dunn"], 
+           metrics_dbscan["Dunn"], 
+           metrics_gmm["Dunn"]),
+  Var_Explained = c(metrics_kmeans["Var_Explained"], 
+                    metrics_dbscan["Var_Explained"], 
+                    metrics_gmm["Var_Explained"])
+)
+
+# Weights for multi-criteria evaluation
+weights <- c(Silhouette = 0.30, Davies_Bouldin = 0.25, 
+             Calinski_Harabasz = 0.25, Dunn = 0.10, Var_Explained = 0.10)
+
+# Normalize and calculate weighted score
+eval_norm <- evaluation_comparison %>%
+  mutate(
+    Sil_norm = (Silhouette - min(Silhouette)) / (max(Silhouette) - min(Silhouette)),
+    DB_norm = 1 - ((Davies_Bouldin - min(Davies_Bouldin)) / (max(Davies_Bouldin) - min(Davies_Bouldin))),
+    CH_norm = (Calinski_Harabasz - min(Calinski_Harabasz)) / (max(Calinski_Harabasz) - min(Calinski_Harabasz)),
+    Dunn_norm = (Dunn - min(Dunn)) / (max(Dunn) - min(Dunn)),
+    Var_norm = (Var_Explained - min(Var_Explained)) / (max(Var_Explained) - min(Var_Explained)),
+    Score = Sil_norm * weights[1] + DB_norm * weights[2] + 
+            CH_norm * weights[3] + Dunn_norm * weights[4] + Var_norm * weights[5]
+  )
+
+evaluation_comparison$Score <- round(eval_norm$Score, 4)
+```
+
+```{r comparison-table, include=TRUE}
+kable(evaluation_comparison,
+      booktabs = TRUE,
+      digits = c(0, 0, 4, 4, 2, 4, 2, 4),
+      col.names = c("Method", "K", "Silhouette", "Davies-Bouldin", 
+                    "Calinski-Harabasz", "Dunn", "Var Exp (%)", "Score"),
+      caption = "Clustering Performance: Multi-Criteria Evaluation") %>%
+  kable_styling(latex_options = c("HOLD_position", "striped", "scale_down"),
+                font_size = 9) %>%
+  column_spec(1, bold = TRUE) %>%
+  column_spec(8, bold = TRUE)
+```
+
+Table 8 presents quantitative comparison across all three methods.
+
+K-Means clustering solution with k = 6 is fairly good when evaluated
+quantitatively. The Silhouette score (0.3560) indicates good cluster
+separation, while the Davies-Bouldin index (1.1456) suggests that the
+clusters are moderately separated. The solution explains 56.44% of total
+customer variance, demonstrating moderate model fit. It achieved the
+highest weighted sum of 0.75 among the three methods, suggesting that
+the clustering outcome is comparatively good.
+
+DBSCAN clustering solution achieved a higher raw Silhouette score
+(0.5413) than K-Means, indicating that the data points in its two
+primary clusters are highly separated and well-defined. Its low
+Davies-Bouldin Index (0.9023) further suggests that these clusters are
+compact. However, the model explains only 20.04% of the total customer
+variance, indicating that this two-cluster solution does not represent
+well for the overall structure of the data. The method achieved the
+second highest weighted sum of 0.65 among the three methods.
+
+Gaussian Mixture Model (GMM) clustering solution with k = 6 (hard
+cluster assignments for evaluation) reports a very low Silhouette score
+and high Davies-Bouldin suggesting significant cluster overlap and poor
+separation. GMM’s performance reflects its probabilistic soft
+boundaries, which are poorly suited for the required crisp customer
+segmentation. Also, it achieved the lowest weighted sum of 0.09 among
+the three methods.
+
+## Cluster Profiling and Interpretation
+
+```{r}
+profile_clusters <- function(cluster_assignments, customer_features, df_engineered,
+                             method_name = "Clustering", handle_noise = FALSE) {
+  # Add cluster assignments
+  customer_clustered <- customer_features %>%
+    mutate(Cluster = cluster_assignments)
+
+  # Join to engineered DF 
+  df_clustered <- df_engineered %>%
+    left_join(customer_clustered %>% dplyr::select(Customer.Id, Cluster),
+              by = "Customer.Id")
+
+  # Numerical profiling
+  numerical_profiles <- customer_clustered %>%
+    group_by(Cluster) %>%
+    summarise(
+      N_Customers = n(),
+      Avg_Orders = round(mean(n_orders, na.rm = TRUE), 1),
+      Total_Sales = round(mean(total_sales, na.rm = TRUE), 0),
+      Avg_Order_Value = round(mean(avg_order_value, na.rm = TRUE), 2),
+      Avg_Profit_Ratio = round(mean(avg_profit_ratio, na.rm = TRUE) * 100, 1),
+      Avg_Discount_Rate = round(mean(avg_discount_rate, na.rm = TRUE) * 100, 1),
+      Late_Delivery_Risk = round(mean(avg_late_delivery, na.rm = TRUE) * 100, 1),
+      .groups = "drop"
+    )
+
+  numerical_profiles <- numerical_profiles %>%
+    mutate(Pct_Customers = paste0(round(N_Customers / sum(N_Customers) * 100, 1), "%"))
+
+  # Categorical profiling: use df_clustered 
+  # Top segment
+  top_segment <- df_clustered %>%
+    group_by(Cluster, Customer.Segment) %>%
+    summarise(n = n(), .groups = "drop_last") %>%
+    mutate(pct = n / sum(n) * 100) %>%
+    slice_max(pct, n = 1) %>%                
+    mutate(Top_Segment = paste0(Customer.Segment, " (", round(pct, 0), "%)")) %>%
+    ungroup() %>%
+    dplyr::select(Cluster, Top_Segment)
+
+  # Top product
+  top_product <- df_clustered %>%
+    group_by(Cluster, Category.Name) %>%
+    summarise(n = n(), .groups = "drop_last") %>%
+    mutate(pct = n / sum(n) * 100) %>%
+    slice_max(pct, n = 1) %>%
+    mutate(Top_Product = paste0(Category.Name, " (", round(pct, 0), "%)")) %>%
+    ungroup() %>%
+    dplyr::select(Cluster, Top_Product)
+
+  # Top market
+  top_market <- df_clustered %>%
+    group_by(Cluster, Market) %>%
+    summarise(n = n(), .groups = "drop_last") %>%
+    mutate(pct = n / sum(n) * 100) %>%
+    slice_max(pct, n = 1) %>%
+    mutate(Top_Market = paste0(Market, " (", round(pct, 0), "%)")) %>%
+    ungroup() %>%
+    dplyr::select(Cluster, Top_Market)
+
+  # Top shipping
+  top_shipping <- df_clustered %>%
+    group_by(Cluster, Shipping.Mode) %>%
+    summarise(n = n(), .groups = "drop_last") %>%
+    mutate(pct = n / sum(n) * 100) %>%
+    slice_max(pct, n = 1) %>%
+    mutate(Top_Shipping = paste0(Shipping.Mode, " (", round(pct, 0), "%)")) %>%
+    ungroup() %>%
+    dplyr::select(Cluster, Top_Shipping)
+
+  # Combine everything to match your original combined object
+  profile <- numerical_profiles %>%
+    left_join(top_segment, by = "Cluster") %>%
+    left_join(top_product, by = "Cluster") %>%
+    left_join(top_market, by = "Cluster") %>%
+    left_join(top_shipping, by = "Cluster") %>%
+    dplyr::select(Cluster, N_Customers, Pct_Customers, everything())
+
+  profile$Cluster <- as.character(profile$Cluster)
+
+  return(profile)
+}
+```
+
+```{r generate-profiles, include=FALSE}
+# Generate profiles for all methods
+profile_kmeans <- profile_clusters(kmeans_final$cluster, customer_features, 
+                                   df_engineered, "K-Means")
+
+profile_dbscan <- profile_clusters(dbscan_final$cluster, customer_features, 
+                                   df_engineered, "DBSCAN", handle_noise = TRUE)
+
+profile_gmm <- profile_clusters(gmm_final$classification, customer_features, 
+                               df_engineered, "GMM")
+
+cat("Profiles generated for all methods\n")
+```
+
+```{r kmeans-profile, include=TRUE}
+kable(profile_kmeans,
+      booktabs = TRUE,
+      col.names = c("Cluster", "N", "% Total", "Avg Orders", "Avg Sales ($)", 
+                   "Avg Order Value ($)", "Profit %", "Discount %", 
+                   "Late Delivery %", "Top Segment", "Top Product", 
+                   "Top Market", "Top Shipping"),
+      caption = "Customer Segment Profiles: K-Means Clustering") %>%
+  kable_styling(latex_options = c("HOLD_position", "striped", "scale_down"),
+                font_size = 8) %>%
+  add_header_above(c(" " = 1, "Distribution" = 2, "behavioural Metrics" = 6, 
+                    "Demographics" = 4))
+```
+
+The six K-Means clusters reflect distinct behavioural patterns. Cluster
+1 contains high-value customers who generate negative profits, likely
+due to heavy discounts or returns, and require pricing or policy
+correction. Cluster 2 is a small but highly profitable premium group
+suitable for prioritized service. Cluster 3 represents the core customer
+base with frequent purchases and stable profitability. Cluster 4
+includes moderate-value customers with high late-delivery rates,
+indicating logistics inefficiencies. Cluster 5 consists of low-spending
+yet reliable customers with healthy margins. Cluster 6 has moderate
+spending but extremely high late-delivery rates, indicating service
+issues and potential churn.
+
+Overall, Cluster 1 and Cluster 6 present the most urgent financial and
+operational risks, while Clusters 2, 3 and 5 represent stable or
+high-value segments that support targeted resource allocation.
+
+```{r dbscan-profile, include=TRUE}
+kable(profile_dbscan,
+      booktabs = TRUE,
+      col.names = c("Cluster", "N", "% Total", "Avg Orders", "Avg Sales ($)", 
+                   "Avg Order Value ($)", "Profit %", "Discount %", 
+                   "Late Delivery %", "Top Segment", "Top Product", 
+                   "Top Market", "Top Shipping"),
+      caption = "Customer Segment Profiles: DBSCAN") %>%
+  kable_styling(latex_options = c("HOLD_position", "striped", "scale_down"),
+                font_size = 8) %>%
+  add_header_above(c(" " = 1, "Distribution" = 2, "behavioural Metrics" = 6, 
+                    "Demographics" = 4))
+```
+
+Table 10 shows the results of customer profile for DBSCAN. Customers in
+Cluster 1 are low-spending consistent buyers. They have high frequency
+orders but low order values. On the other hand, Cluster 2 consists of
+premium customers. It is a small, very profitable group ideal for
+loyalty or premium service programs.
+
+Overall, DBSCAN managed to segment the customers based on order
+frequency and value.
+
+```{r gmm-profile, include=TRUE}
+kable(profile_gmm,
+      booktabs = TRUE,
+      col.names = c("Cluster", "N", "% Total", "Avg Orders", "Avg Sales ($)", 
+                   "Avg Order Value ($)", "Profit %", "Discount %", 
+                   "Late Delivery %", "Top Segment", "Top Product", 
+                   "Top Market", "Top Shipping"),
+      caption = "Customer Segment Profiles: GMM") %>%
+  kable_styling(latex_options = c("HOLD_position", "striped", "scale_down"),
+                font_size = 8) %>%
+  add_header_above(c(" " = 1, "Distribution" = 2, "behavioural Metrics" = 6, 
+                    "Demographics" = 4))
+```
+
+The GMM results reveal six overlapping behavioural segments. Cluster 1
+contains low-value customers with extremely high late-delivery rates,
+indicating serious service issues. Cluster 2 captures high-value but
+unprofitable buyers due to negative margins. Cluster 3 consists of
+moderate-value customers who also face high late-delivery risk. Cluster
+4 represents high-frequency, profitable customers experiencing poor
+delivery reliability, suggesting operational strain. Cluster 5 is the
+core and most profitable segment with the highest order frequency.
+Cluster 6 includes low-value customers with excellent delivery
+performance but limited financial contribution.
+
+Overall, GMM highlights segments facing financial risk (Cluster 2),
+service risk (Clusters 1, 3, 4) and strong operational performance
+(Cluster 6), with Cluster 5 standing out as the key profit driver.
+
+# Discussion
+
+## Key Findings
+
+The clustering results show that unsupervised learning reveals clear
+behavioural segments that directly support supply-chain decision-making.
+K-Means (k = 6) produced the most distinct groups, separating customers
+by purchasing volume, profitability and delivery reliability, thereby
+indicating where to prioritize fulfilment, apply cost-controlled service
+levels or address late-delivery risks. DBSCAN identified a small set of
+anomalous customers with extreme negative profits, highlighting
+potential operational errors important for risk mitigation. GMM captured
+overlapping behavioural patterns missed by hard clustering, identifying
+customers with mixed characteristics that may benefit from tailored
+engagement strategies.
+
+Overall, the multi-criteria evaluation shows K-Means offers the
+strongest balance of separation, compactness and interpretability.
+Behavioural clustering therefore exposes hidden drivers of cost and
+performance, enabling more targeted and efficient supply-chain
+decisions.
+
+## Limitations and Future Work
+
+While the clustering analysis produced meaningful behavioural segments,
+several limitations remain. First, demographic features such as Top
+Segment, Top Product and Top Market showed little variation across
+clusters, limiting their usefulness. Future work could engineer richer
+attributes such as product diversity or customer lifetime value to
+improve discriminatory power. Second, the dataset’s coarse geographic
+and product granularity may mask subtle behavioural differences, thus
+incorporating finer-grained or derived spatial features would strengthen
+segmentation. Third, the algorithms used are sensitive to
+hyperparameters. K-Means and GMM require pre-defining the number of
+clusters, while DBSCAN depends heavily on $\epsilon$ and minPts. More
+robust approaches such as K-Means++, HDBSCAN or BGMM could better
+capture complex structures. Finally, the clusters capture associations
+rather than causal drivers. Integrating temporal trends or feeding the
+segments into downstream predictive models (e.g., late-delivery or churn
+prediction) would provide stronger operational value and clearer
+evidence of business impact.
+
+# Conclusion
+
+This project addressed the challenge of limited visibility into
+heterogeneous customer behaviours that influence cost, service
+performance and profitability. By applying unsupervised learning to a
+large transactional dataset, we demonstrated how behavioural clustering
+can uncover customer segments that are not observable through
+traditional reporting.
+
+K-Means produced the most interpretable segmentation, revealing clear
+differences in order frequency, spending, profitability and
+late-delivery risk, suggesting insights that directly inform fulfilment
+prioritization, inventory planning and service-level adjustments. DBSCAN
+highlighted anomalous customer patterns associated with potential
+operational errors or fraud, while GMM captured overlapping behavioural
+tendencies that support more nuanced customer engagement strategies.
+
+Overall, the findings show that unsupervised learning offers a practical
+and effective way to transform raw operational data into actionable
+segmentation. This data-driven understanding enables more targeted
+resource allocation, differentiated service strategies and improved risk
+mitigation across supply-chain operations.
+
+\newpage
+
+# References
+
+::: {#refs}
+:::
+
+\newpage
+
+# Appendix (Dataset Description)
+
+```{r desc_table, include=TRUE}
+col_desc <- read_csv("dataset/DescriptionDataCoSupplyChainDataset.csv")
+col_desc <- col_desc %>%
+  mutate(FIELDS = gsub("_", "\\\\_", FIELDS)) %>% 
+  mutate(FIELDS = paste0("\\textit{", FIELDS, "}")) %>%
+  mutate(DESCRIPTION = gsub(":", "", DESCRIPTION)) %>%
+  mutate(DESCRIPTION = trimws(DESCRIPTION)) %>%
+  mutate(DESCRIPTION = gsub("_", "\\\\_", DESCRIPTION))
+
+kable(col_desc, "latex", 
+        escape = FALSE) %>%
+    kable_styling(latex_options = c("scale_down", "hold_position"),
+                  font_size = 7) %>%
+    column_spec(1, width = "3.5cm") %>%  # Fixed width for column 1
+    column_spec(2, width = "14cm")     # Fixed width for column 2
+```

@@ -1,0 +1,247 @@
+% Research papers:
+% pca
+@article{jolliffe2016principal,
+  title={Principal component analysis: a review and recent developments},
+  author={Jolliffe, Ian T and Cadima, Jorge},
+  journal={Philosophical transactions of the royal society A: Mathematical, Physical and Engineering Sciences},
+  volume={374},
+  number={2065},
+  pages={20150202},
+  year={2016},
+  publisher={the Royal Society publishing}
+}
+
+% kmeans
+@inproceedings{arthur2007kmeansplusplus,
+  author = {Arthur, David and Vassilvitskii, Sergei},
+  title = {k-means++: the advantages of careful seeding},
+  year = {2007},
+  isbn = {9780898716245},
+  publisher = {Society for Industrial and Applied Mathematics},
+  address = {USA},
+  abstract = {The k-means method is a widely used clustering technique that seeks to minimize the average squared distance between points in the same cluster. Although it offers no accuracy guarantees, its simplicity and speed are very appealing in practice. By augmenting k-means with a very simple, randomized seeding technique, we obtain an algorithm that is Θ(logk)-competitive with the optimal clustering. Preliminary experiments show that our augmentation improves both the speed and the accuracy of k-means, often quite dramatically.},
+  booktitle = {Proceedings of the Eighteenth Annual ACM-SIAM Symposium on Discrete Algorithms},
+  pages = {1027–1035},
+  numpages = {9},
+  location = {New Orleans, Louisiana},
+  series = {SODA '07}
+}
+
+@misc{bahmani2012scalable,
+      title={Scalable K-Means++}, 
+      author={Bahman Bahmani and Benjamin Moseley and Andrea Vattani and Ravi Kumar and Sergei Vassilvitskii},
+      year={2012},
+      eprint={1203.6402},
+      archivePrefix={arXiv},
+      primaryClass={cs.DB},
+      url={https://arxiv.org/abs/1203.6402}, 
+}
+
+@ARTICLE{lloyd1982kmeans,
+  author={Lloyd, S.},
+  journal={IEEE Transactions on Information Theory}, 
+  title={Least squares quantization in PCM}, 
+  year={1982},
+  volume={28},
+  number={2},
+  pages={129-137},
+  keywords={Noise;Quantization (signal);Voltage;Receivers;Pulse modulation;Sufficient conditions;Stochastic processes;Probabilistic logic;Urban areas;Q measurement},
+  doi={10.1109/TIT.1982.1056489}}
+  
+  @book{bishop2006prml,
+  title     = {Pattern Recognition and Machine Learning},
+  author    = {Bishop, Christopher M.},
+  year      = {2006},
+  publisher = {Springer},
+  address   = {New York}
+}
+  
+  
+% dbscan
+@inproceedings{ester1996density,
+  title={A density-based algorithm for discovering clusters in large spatial databases with noise},
+  author={Ester, Martin and Kriegel, Hans-Peter and Sander, J{\"o}rg and Xu, Xiaowei and others},
+  booktitle={kdd},
+  volume={96},
+  number={34},
+  pages={226--231},
+  year={1996}
+}
+
+@InProceedings{campello2013density,
+  author="Campello, Ricardo J. G. B.
+  and Moulavi, Davoud
+  and Sander, Joerg",
+  editor="Pei, Jian
+  and Tseng, Vincent S.
+  and Cao, Longbing
+  and Motoda, Hiroshi
+  and Xu, Guandong",
+  title="Density-Based Clustering Based on Hierarchical Density Estimates",
+  booktitle="Advances in Knowledge Discovery and Data Mining",
+  year="2013",
+  publisher="Springer Berlin Heidelberg",
+  address="Berlin, Heidelberg",
+  pages="160--172",
+  isbn="978-3-642-37456-2"
+}
+
+@article{10.1145/304181.304187,
+  author = {Ankerst, Mihael and Breunig, Markus M. and Kriegel, Hans-Peter and Sander, J\"{o}rg},
+  title = {OPTICS: ordering points to identify the clustering structure},
+  year = {1999},
+  issue_date = {June 1999},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {28},
+  number = {2},
+  issn = {0163-5808},
+  url = {https://doi.org/10.1145/304181.304187},
+  doi = {10.1145/304181.304187},
+  abstract = {Cluster analysis is a primary method for database mining. It is either used as a stand-alone tool to get insight into the distribution of a data set, e.g. to focus further analysis and data processing, or as a preprocessing step for other algorithms operating on the detected clusters. Almost all of the well-known clustering algorithms require input parameters which are hard to determine but have a significant influence on the clustering result. Furthermore, for many real-data sets there does not even exist a global parameter setting for which the result of the clustering algorithm describes the intrinsic clustering structure accurately. We introduce a new algorithm for the purpose of cluster analysis which does not produce a clustering of a data set explicitly; but instead creates an augmented ordering of the database representing its density-based clustering structure. This cluster-ordering contains information which is equivalent to the density-based clusterings corresponding to a broad range of parameter settings. It is a versatile basis for both automatic and interactive cluster analysis. We show how to automatically and efficiently extract not only 'traditional' clustering information (e.g. representative points, arbitrary shaped clusters), but also the intrinsic clustering structure. For medium sized data sets, the cluster-ordering can be represented graphically and for very large data sets, we introduce an appropriate visualization technique. Both are suitable for interactive exploration of the intrinsic clustering structure offering additional insights into the distribution and correlation of the data.},
+  journal = {SIGMOD Rec.},
+  month = jun,
+  pages = {49–60},
+  numpages = {12},
+  keywords = {cluster analysis, database mining, visualization}
+}
+
+@inproceedings{ankerst1999optics,
+  author = {Ankerst, Mihael and Breunig, Markus M. and Kriegel, Hans-Peter and Sander, J\"{o}rg},
+  title = {OPTICS: ordering points to identify the clustering structure},
+  year = {1999},
+  isbn = {1581130848},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  url = {https://doi.org/10.1145/304182.304187},
+  doi = {10.1145/304182.304187},
+  abstract = {Cluster analysis is a primary method for database mining. It is either used as a stand-alone tool to get insight into the distribution of a data set, e.g. to focus further analysis and data processing, or as a preprocessing step for other algorithms operating on the detected clusters. Almost all of the well-known clustering algorithms require input parameters which are hard to determine but have a significant influence on the clustering result. Furthermore, for many real-data sets there does not even exist a global parameter setting for which the result of the clustering algorithm describes the intrinsic clustering structure accurately. We introduce a new algorithm for the purpose of cluster analysis which does not produce a clustering of a data set explicitly; but instead creates an augmented ordering of the database representing its density-based clustering structure. This cluster-ordering contains information which is equivalent to the density-based clusterings corresponding to a broad range of parameter settings. It is a versatile basis for both automatic and interactive cluster analysis. We show how to automatically and efficiently extract not only 'traditional' clustering information (e.g. representative points, arbitrary shaped clusters), but also the intrinsic clustering structure. For medium sized data sets, the cluster-ordering can be represented graphically and for very large data sets, we introduce an appropriate visualization technique. Both are suitable for interactive exploration of the intrinsic clustering structure offering additional insights into the distribution and correlation of the data.},
+  booktitle = {Proceedings of the 1999 ACM SIGMOD International Conference on Management of Data},
+  pages = {49–60},
+  numpages = {12},
+  keywords = {cluster analysis, database mining, visualization},
+  location = {Philadelphia, Pennsylvania, USA},
+  series = {SIGMOD '99}
+}
+
+
+
+@article{sander1998gdbscan,
+  author = {Sander, J\"{o}rg and Ester, Martin and Kriegel, Hans-Peter and Xu, Xiaowei},
+  title = {Density-Based Clustering in Spatial Databases: The Algorithm GDBSCAN and Its Applications},
+  year = {1998},
+  issue_date = {June 1998},
+  publisher = {Kluwer Academic Publishers},
+  address = {USA},
+  volume = {2},
+  number = {2},
+  issn = {1384-5810},
+  url = {https://doi.org/10.1023/A:1009745219419},
+  doi = {10.1023/A:1009745219419},
+  abstract = {The clustering algorithm DBSCAN relies on a density-based notion of  clusters and is designed to discover clusters of arbitrary shape as well as to distinguish noise. In this paper, we generalize this algorithm in two important directions. The generalized algorithm—called GDBSCAN—can cluster point objects as well as spatially extended  objects according to both, their spatial and their nonspatial attributes. In addition, four applications using 2D points (astronomy), 3D points (biology), 5D points (earth science) and 2D polygons (geography) are presented, demonstrating the applicability of GDBSCAN to real-world problems.},
+  journal = {Data Min. Knowl. Discov.},
+  month = jun,
+  pages = {169–194},
+  numpages = {26},
+  keywords = {spatial databases, efficiency, clustering algorithms, applications}
+}
+
+@misc{mackey2014unsupervised,
+  title     = {STATS 306B: Unsupervised Learning, Lecture 2 — April 2},
+  author    = {Mackey, Lester},
+  howpublished = {Lecture notes, Stanford University},
+  year      = {2014},
+  note      = {Scribed by Junyang Qian and Minzhe Wang},
+}
+
+@article{mclachlan2019finite,
+  title={Finite mixture models},
+  author={McLachlan, Geoffrey J and Lee, Sharon X and Rathnayake, Suren I},
+  journal={Annual review of statistics and its application},
+  volume={6},
+  number={1},
+  pages={355--378},
+  year={2019},
+  publisher={Annual Reviews}
+}
+  
+@inproceedings{Tang2014Scaling,
+  author    = {Cheng Tang and Claire Monteleoni},
+  title     = {Scaling up Lloyd’s algorithm: stochastic and parallel block‐wise optimisation perspectives},
+  booktitle = {Workshop on Optimization for Machine Learning (OPT2014), in NIPS 2014},
+  year      = {2014},
+  url       = {https://opt-ml.org/papers/opt2014_submission_18.pdf}
+}
+
+
+@article{TIWARI2018319,
+  title = {Big data analytics in supply chain management between 2010 and 2016: Insights to industries},
+  journal = {Computers & Industrial Engineering},
+  volume = {115},
+  pages = {319-330},
+  year = {2018},
+  issn = {0360-8352},
+  doi = {https://doi.org/10.1016/j.cie.2017.11.017},
+  url = {https://www.sciencedirect.com/science/article/pii/S0360835217305508},
+  author = {Sunil Tiwari and H.M. Wee and Yosef Daryanto},
+  keywords = {Big data analytics, Supply chain management, Big data application}
+}
+
+@article{Biswas_2016,
+   title={A Proposed Architecture for Big Data Driven Supply Chain Analytics},
+   ISSN={1556-5068},
+   url={http://dx.doi.org/10.2139/ssrn.2795906},
+   DOI={10.2139/ssrn.2795906},
+   journal={SSRN Electronic Journal},
+   publisher={Elsevier BV},
+   author={Biswas, Sanjib and Sen, Jaydip},
+   year={2016} }
+
+@article{JAIN2010651,
+  title = {Data clustering: 50 years beyond K-means},
+  journal = {Pattern Recognition Letters},
+  volume = {31},
+  number = {8},
+  pages = {651-666},
+  year = {2010},
+  note = {Award winning papers from the 19th International Conference on Pattern Recognition (ICPR)},
+  issn = {0167-8655},
+  doi = {https://doi.org/10.1016/j.patrec.2009.09.011},
+  url = {https://www.sciencedirect.com/science/article/pii/S0167865509002323},
+  author = {Anil K. Jain},
+  keywords = {Data clustering, User‚Äôs dilemma, Historical developments, Perspectives on clustering, King-Sun Fu prize}
+}
+
+@article{GOVINDAN2020101967,
+  title = {A decision support system for demand management in healthcare supply chains considering the epidemic outbreaks: A case study of coronavirus disease 2019 (COVID-19)},
+  journal = {Transportation Research Part E: Logistics and Transportation Review},
+  volume = {138},
+  pages = {101967},
+  year = {2020},
+  issn = {1366-5545},
+  doi = {https://doi.org/10.1016/j.tre.2020.101967},
+  url = {https://www.sciencedirect.com/science/article/pii/S1366554520306189},
+  author = {Kannan Govindan and Hassan Mina and Behrouz Alavi},
+  keywords = {Disaster management, Epidemic outbreaks, Healthcare supply chain disruption mitigation, Fuzzy inference system, COVID-19}
+}
+
+% cite 6
+@article{choi2018bda,
+  author = {Choi, Tsan-Ming and Wallace, Stein W. and Wang, Yulan},
+  title = {Big Data Analytics in Operations Management},
+  journal = {Production and Operations Management},
+  volume = {27},
+  number = {10},
+  pages = {1868-1883},
+  keywords = {Big data analytics, big data methods, operations management, data-driven optimization, applications and case studies},
+  doi = {https://doi-org.remotexs.ntu.edu.sg/10.1111/poms.12838},
+  url = {https://onlinelibrary-wiley-com.remotexs.ntu.edu.sg/doi/abs/10.1111/poms.12838},
+  eprint = {https://onlinelibrary-wiley-com.remotexs.ntu.edu.sg/doi/pdf/10.1111/poms.12838}
+}
+
+@inproceedings{Rendn2011InternalVE,
+  title={Internal versus External cluster validation indexes},
+  author={Er{\'e}ndira Rend{\'o}n and Itzel M. Abundez and Alejandra Arizmendi and Elvia M. Quiroz},
+  year={2011},
+  url={https://api.semanticscholar.org/CorpusID:16604539}
+}
